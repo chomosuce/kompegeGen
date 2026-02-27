@@ -86,6 +86,7 @@
                 <version>3.5.0</version>
                 <configuration>
                     <mainClass>MainKt</mainClass>
+                    <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
         </plugins>
