@@ -7,7 +7,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonElement
 
 @Serializable(with = DifficultySerializer::class)
 enum class Difficulty(val code: Int) {
@@ -47,6 +46,20 @@ data class TaskFile(
 )
 
 @Serializable
+data class TaskTable(
+    val cols: Int? = null,
+    val rows: Int? = null
+)
+
+@Serializable
+data class SubTaskItem(
+    val key: String = "",
+    val text: String = "",
+    val table: TaskTable = TaskTable(),
+    val number: Int = 0
+)
+
+@Serializable
 data class TaskItem(
     val id: String = "",
     val number: Int = 0,
@@ -62,8 +75,8 @@ data class TaskItem(
     @SerialName("user_id")
     val userId: String = "",
     val files: List<TaskFile> = emptyList(),
-    val subTask: List<JsonElement> = emptyList(),
-    val table: JsonElement? = null,
+    val subTask: List<SubTaskItem> = emptyList(),
+    val table: TaskTable = TaskTable(),
     val difficulty: Difficulty = Difficulty.BASE,
     val createdAt: String = "",
     val updatedAt: String = ""

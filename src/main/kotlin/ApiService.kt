@@ -10,6 +10,7 @@ import java.io.Closeable
 class ApiService : Closeable {
     companion object {
         private const val TASK_URL = "https://kompege.ru/api/v1/task/number/"
+        private val TASKS = (1 .. 27).filter { it != 20 && it != 21 }
         private val json = Json {
             ignoreUnknownKeys = true
         }
@@ -37,6 +38,13 @@ class ApiService : Closeable {
                     format = DecodeSequenceMode.ARRAY_WRAPPED
                 ).take(limit).toList()
             }
+        }
+    }
+
+    fun getVariant(): List<TaskItem> {
+        println(TASKS)
+        return TASKS.mapNotNull { number ->
+            get(number, 1).lastOrNull()
         }
     }
 
