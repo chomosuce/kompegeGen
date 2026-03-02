@@ -33,8 +33,7 @@ class PdfgeneratorImpl(
                 builder.useFont(resolvedFontPath.toFile(), "PdfCyrillic")
             } else {
                 System.err.println(
-                    "Cyrillic font is not configured. " +
-                        "Provide fontPath in PdfgeneratorImpl to avoid '#' glyphs in PDF."
+                    "Cyrillic font is not configured."
                 )
             }
 
@@ -109,7 +108,7 @@ class PdfgeneratorImpl(
                 </style>
             </head>
             <body>
-                <h1>Материалы по задачам (${tasks.size})</h1>
+                <h1>Вариант (${tasks.size})</h1>
                 $taskBlocks
             </body>
             </html>
@@ -120,11 +119,11 @@ class PdfgeneratorImpl(
         if (fontPath != null && fontPath.exists()) return fontPath
 
         val candidates = listOf(
-            "/System/Library/Fonts/Supplemental/Arial.ttf",
-            "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
             "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+            "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
             "C:/Windows/Fonts/arial.ttf",
             "C:/Windows/Fonts/calibri.ttf"
         )
@@ -138,6 +137,7 @@ class PdfgeneratorImpl(
     private fun buildTaskHtml(task: TaskItem): String {
         val materialBlock = renderSection("Задача", task.text)
         val subTasksBlock = renderSubTasks(task.subTask)
+
         val filesBlock = renderFiles(task.files)
 
         return """
@@ -155,13 +155,54 @@ class PdfgeneratorImpl(
 
     private fun renderSection(title: String, rawText: String): String {
         if (rawText.isBlank()) return ""
-        val text = formatSectionContent(rawText)
+        val normalizedText = normalizeMathNotation(rawText)
+        val text = formatSectionContent(normalizedText)
         return """
             <div class="section">
                 <h3>${escapeHtml(title)}</h3>
                 <div>$text</div>
             </div>
         """.trimIndent()
+    }
+
+    private fun normalizeMathNotation(source: String): String {
+        var result = source
+
+        val commandReplacements = listOf(
+            Regex("""\\equiv\b""") to "≡",
+            Regex("""\\leftrightarrow\b""") to "↔",
+            Regex("""\\Rightarrow\b""") to "⇒",
+            Regex("""\\to\b""") to "→",
+            Regex("""\\lor\b""") to "∨",
+            Regex("""\\land\b""") to "∧",
+            Regex("""\\neg\b""") to "¬",
+            Regex("""\\oplus\b""") to "⊕",
+            Regex("""\\leq\b""") to "≤",
+            Regex("""\\geq\b""") to "≥"
+        )
+
+        commandReplacements.forEach { (pattern, replacement) ->
+            result = result.replace(pattern, replacement)
+        }
+
+        result = result
+            .replace("\\{", "{")
+            .replace("\\}", "}")
+            .replace("\\_", "_")
+
+        result = result.replace(BRACED_SUBSCRIPT_REGEX, "$1<sub>$2</sub>")
+        result = result.replace(SIMPLE_SUBSCRIPT_REGEX, "$1<sub>$2</sub>")
+        result = result.replace(BRACED_SUPERSCRIPT_REGEX, "$1<sup>$2</sup>")
+        result = result.replace(SIMPLE_SUPERSCRIPT_REGEX, "$1<sup>$2</sup>")
+
+        return result
+            .replace("\\(", "")
+            .replace("\\)", "")
+            .replace("\\[", "")
+            .replace("\\]", "")
+            // В ряде задач kompege логическое "или" приходит как '#'.
+            .replace(Regex("""\s#\s"""), " ∨ ")
+            .replace(Regex("""\s+([∨∧→↔⇒≡⊕])\s+"""), " $1 ")
     }
 
     private fun formatSectionContent(rawText: String): String {
@@ -262,5 +303,13 @@ class PdfgeneratorImpl(
     companion object {
         private val HTML_TAG_REGEX = Regex("""</?[a-zA-Z][^>]*>""")
         private val BROKEN_OPEN_TAG_REGEX = Regex("""^\s*[a-zA-Z][a-zA-Z0-9]*>""")
+        private val BRACED_SUBSCRIPT_REGEX =
+            Regex("""(?<![A-Za-zА-Яа-я0-9])([A-Za-zА-Яа-я])_\{([^}]+)}""")
+        private val SIMPLE_SUBSCRIPT_REGEX =
+            Regex("""(?<![A-Za-zА-Яа-я0-9])([A-Za-zА-Яа-я])_([A-Za-zА-Яа-я0-9]+)""")
+        private val BRACED_SUPERSCRIPT_REGEX =
+            Regex("""(?<![A-Za-zА-Яа-я0-9])([A-Za-zА-Яа-я0-9])\^\{([^}]+)}""")
+        private val SIMPLE_SUPERSCRIPT_REGEX =
+            Regex("""(?<![A-Za-zА-Яа-я0-9])([A-Za-zА-Яа-я0-9])\^([A-Za-zА-Яа-я0-9]+)""")
     }
 }
