@@ -84,31 +84,58 @@ class PdfgeneratorImpl(
     }
 
     private fun buildTaskHtml(task: TaskItem): String {
-        val materialBlock = renderSection("Задача", task.text)
-        val subTasksBlock = renderSubTasks(task.subTask)
-
+        val materialBlock = renderSection("", task.text)
+        val subTaskBlocks = task.subTask.joinToString("\n") { subTask ->
+            buildItemHtml(
+                cssClass = "task",
+                titleTag = "h2",
+                title = "Задача №${subTask.number}",
+                metaBlocks = buildList {
+                    add("""<div class="meta">key=${escapeHtml(subTask.key)}</div>""")
+                    if (subTask.table.cols != null || subTask.table.rows != null) {
+                        val rows = subTask.table.rows?.toString() ?: "?"
+                        val cols = subTask.table.cols?.toString() ?: "?"
+                        add("""<div class="meta">table=${rows}x${cols}</div>""")
+                    }
+                },
+                contentBlocks = listOf(renderSection("Задача", subTask.text))
+            )
+        }
         val filesBlock = renderFiles(task.files)
 
-        return """
-            <div class="task">
-                <h2>Задача №${task.number}</h2>
-                <div class="meta">
-                    taskId=${task.taskId}, key=${escapeHtml(task.key)}, difficulty=${task.difficulty}
-                </div>
-                $materialBlock
-                $subTasksBlock
-                $filesBlock
-            </div>
-        """.trimIndent()
+        return buildItemHtml(
+            cssClass = "task",
+            titleTag = "h2",
+            title = "Задача №${task.number}",
+            metaBlocks = listOf(
+                """
+                    <div class="meta">
+                        taskId=${task.taskId}, key=${escapeHtml(task.key)}, difficulty=${task.difficulty}
+                    </div>
+                """.trimIndent()
+            ),
+            contentBlocks = listOf(materialBlock, filesBlock)
+        )
+            .plus(if (subTaskBlocks.isBlank()) "" else "\n$subTaskBlocks")
     }
 
-    private fun renderSection(title: String, rawText: String): String {
-        if (rawText.isBlank()) return ""
-        val normalizedText = normalizeMathNotation(rawText)
-        val text = formatSectionContent(normalizedText)
+    private fun renderSection(
+        title: String,
+        content: String,
+        titleCssClass: String? = null,
+        contentIsHtml: Boolean = false
+    ): String {
+        if (content.isBlank()) return ""
+        val text = if (contentIsHtml) {
+            content
+        } else {
+            val normalizedText = normalizeMathNotation(content)
+            formatSectionContent(normalizedText)
+        }
+        val titleClassAttr = titleCssClass?.let { """ class="${escapeHtml(it)}"""" } ?: ""
         return """
             <div class="section">
-                <h3>${escapeHtml(title)}</h3>
+                <h3$titleClassAttr>${escapeHtml(title)}</h3>
                 <div>$text</div>
             </div>
         """.trimIndent()
@@ -149,9 +176,6 @@ class PdfgeneratorImpl(
             .replace("\\)", "")
             .replace("\\[", "")
             .replace("\\]", "")
-            // В ряде задач kompege логическое "или" приходит как '#'.
-            .replace(Regex("""\s#\s"""), " ∨ ")
-            .replace(Regex("""\s+([∨∧→↔⇒≡⊕])\s+"""), " $1 ")
     }
 
     private fun formatSectionContent(rawText: String): String {
@@ -185,33 +209,25 @@ class PdfgeneratorImpl(
         return body.html()
     }
 
-    private fun renderSubTasks(subTasks: List<SubTaskItem>): String {
-        if (subTasks.isEmpty()) return ""
-        val blocks = subTasks.joinToString("\n") { subTask -> buildSubTaskHtml(subTask) }
-        return """
-            <div class="section">
-                <h3 class="subtasks-title">Подзадачи</h3>
-                $blocks
-            </div>
-        """.trimIndent()
-    }
-
-    private fun buildSubTaskHtml(subTask: SubTaskItem): String {
-        val materialBlock = renderSection("Материал", subTask.text)
-        val tableMeta = if (subTask.table.cols != null || subTask.table.rows != null) {
-            val rows = subTask.table.rows?.toString() ?: "?"
-            val cols = subTask.table.cols?.toString() ?: "?"
-            """<div class="meta">table=${rows}x${cols}</div>"""
-        } else {
-            ""
-        }
+    private fun buildItemHtml(
+        cssClass: String,
+        titleTag: String,
+        title: String,
+        metaBlocks: List<String>,
+        contentBlocks: List<String>
+    ): String {
+        val meta = metaBlocks
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+        val content = contentBlocks
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
 
         return """
-            <div class="subtask">
-                <h3>Подзадача №${subTask.number}</h3>
-                <div class="meta">key=${escapeHtml(subTask.key)}</div>
-                $tableMeta
-                $materialBlock
+            <div class="$cssClass">
+                <$titleTag>${escapeHtml(title)}</$titleTag>
+                $meta
+                $content
             </div>
         """.trimIndent()
     }
