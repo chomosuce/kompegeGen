@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>Материалы задач</title>
+    <style>
+        @page { size: A4; margin: 14mm; }
+        body {
+            font-family: PdfCyrillic, PdfMath, sans-serif;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #1a1a1a;
+        }
+        h1 { margin: 0 0 14px 0; font-size: 20px; }
+        h2 { margin: 0 0 8px 0; font-size: 16px; }
+        h3 { margin: 12px 0 6px 0; font-size: 14px; }
+        .task {
+            margin: 0 0 14px 0;
+            padding: 10px;
+            border: 1px solid #dcdcdc;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+        .subtask {
+            margin: 8px 0 10px 0;
+            padding: 10px;
+            border: 1px solid #e2e2e2;
+            border-radius: 4px;
+            background: #fcfcfc;
+            page-break-inside: avoid;
+        }
+        .subtasks-title {
+            margin: 12px 0 6px 0;
+            font-size: 14px;
+        }
+        .meta {
+            margin: 0 0 8px 0;
+            color: #4a4a4a;
+            font-size: 11px;
+        }
+        .section { margin: 8px 0; }
+        .section p { margin: 0 0 8px 0; }
+        .section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+        }
+        .section th, .section td {
+            border: 1px solid #9a9a9a;
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+        .section img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 8px 0;
+        }
+        ul { margin: 6px 0 0 18px; padding: 0; }
+        li { margin: 0 0 4px 0; }
+        a { color: #0645ad; text-decoration: none; }
+        sub, sup {
+            display: inline;
+            font-size: 75%;
+            line-height: 0;
+            position: relative;
+            vertical-align: baseline;
+        }
+        sub { bottom: -0.25em; }
+        sup { top: -0.5em; }
+    </style>
+</head>
+<body>
+    <h1>Вариант ({{TASK_COUNT}})</h1>
+    {{TASK_BLOCKS}}
+</body>
+</html>

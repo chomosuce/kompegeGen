@@ -2,8 +2,10 @@ import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Entities
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.outputStream
@@ -14,6 +16,12 @@ class PdfgeneratorImpl(
     private val pdfOutputPath: Path = Paths.get("build", "generated", "tasks.pdf"),
     private val fontPath: Path? = null
 ) : PDFgenerator {
+    private val bundledFontPath: Path? by lazy {
+        extractBundledFont(BUNDLED_FONT_PATH, "pdf-font-")
+    }
+    private val mathFontPath: Path? by lazy {
+        extractBundledFont(MATH_FONT_PATH, "pdf-math-font-")
+    }
 
     override fun getPdf(tasks: List<TaskItem>) {
         val html = buildHtml(tasks)
@@ -36,6 +44,10 @@ class PdfgeneratorImpl(
                     "Cyrillic font is not configured."
                 )
             }
+            val resolvedMathFontPath = mathFontPath
+            if (resolvedMathFontPath != null) {
+                builder.useFont(resolvedMathFontPath.toFile(), "PdfMath")
+            }
 
             builder.run()
         }
@@ -43,95 +55,32 @@ class PdfgeneratorImpl(
 
     private fun buildHtml(tasks: List<TaskItem>): String {
         val taskBlocks = tasks.joinToString("\n") { task -> buildTaskHtml(task) }
-        return """
-            <!DOCTYPE html>
-            <html xmlns="http://www.w3.org/1999/xhtml" lang="ru">
-            <head>
-                <meta charset="UTF-8" />
-                <title>Материалы задач</title>
-                <style>
-                    @page { size: A4; margin: 14mm; }
-                    body {
-                        font-family: PdfCyrillic, sans-serif;
-                        font-size: 12px;
-                        line-height: 1.45;
-                        color: #1a1a1a;
-                    }
-                    h1 { margin: 0 0 14px 0; font-size: 20px; }
-                    h2 { margin: 0 0 8px 0; font-size: 16px; }
-                    h3 { margin: 12px 0 6px 0; font-size: 14px; }
-                    .task {
-                        margin: 0 0 14px 0;
-                        padding: 10px;
-                        border: 1px solid #dcdcdc;
-                        border-radius: 4px;
-                        page-break-inside: avoid;
-                    }
-                    .subtask {
-                        margin: 8px 0 10px 0;
-                        padding: 10px;
-                        border: 1px solid #e2e2e2;
-                        border-radius: 4px;
-                        background: #fcfcfc;
-                        page-break-inside: avoid;
-                    }
-                    .subtasks-title {
-                        margin: 12px 0 6px 0;
-                        font-size: 14px;
-                    }
-                    .meta {
-                        margin: 0 0 8px 0;
-                        color: #4a4a4a;
-                        font-size: 11px;
-                    }
-                    .section { margin: 8px 0; }
-                    .section p { margin: 0 0 8px 0; }
-                    .section table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin: 8px 0;
-                    }
-                    .section th, .section td {
-                        border: 1px solid #9a9a9a;
-                        padding: 4px 6px;
-                        vertical-align: top;
-                    }
-                    .section img {
-                        max-width: 100%;
-                        height: auto;
-                        display: block;
-                        margin: 8px 0;
-                    }
-                    ul { margin: 6px 0 0 18px; padding: 0; }
-                    li { margin: 0 0 4px 0; }
-                    a { color: #0645ad; text-decoration: none; }
-                </style>
-            </head>
-            <body>
-                <h1>Вариант (${tasks.size})</h1>
-                $taskBlocks
-            </body>
-            </html>
-        """.trimIndent()
+        return loadHtmlTemplate()
+            .replace(TASK_COUNT_PLACEHOLDER, tasks.size.toString())
+            .replace(TASK_BLOCKS_PLACEHOLDER, taskBlocks)
+    }
+
+    private fun loadHtmlTemplate(): String {
+        val resource = javaClass.classLoader.getResource(TEMPLATE_PATH)
+            ?: error("PDF template not found: $TEMPLATE_PATH")
+        return resource.openStream()
+            .bufferedReader(Charsets.UTF_8)
+            .use { reader -> reader.readText() }
     }
 
     private fun resolveFontPath(): Path? {
         if (fontPath != null && fontPath.exists()) return fontPath
+        return bundledFontPath
+    }
 
-        val candidates = listOf(
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-            "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-            "/System/Library/Fonts/Supplemental/Arial.ttf",
-            "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/calibri.ttf"
-        )
-
-        return candidates
-            .asSequence()
-            .map(Paths::get)
-            .firstOrNull(Path::exists)
+    private fun extractBundledFont(resourcePath: String, tempPrefix: String): Path? {
+        val resource = javaClass.classLoader.getResourceAsStream(resourcePath) ?: return null
+        return resource.use { input ->
+            val tempFile = kotlin.io.path.createTempFile(tempPrefix, ".ttf")
+            Files.copy(input, tempFile, StandardCopyOption.REPLACE_EXISTING)
+            tempFile.toFile().deleteOnExit()
+            tempFile
+        }
     }
 
     private fun buildTaskHtml(task: TaskItem): String {
@@ -301,6 +250,11 @@ class PdfgeneratorImpl(
     }
 
     companion object {
+        private const val TEMPLATE_PATH = "templates/pdf/tasks.html"
+        private const val BUNDLED_FONT_PATH = "fonts/timesnrcyrmt.ttf"
+        private const val MATH_FONT_PATH = "fonts/NotoSansMath-Regular.ttf"
+        private const val TASK_COUNT_PLACEHOLDER = "{{TASK_COUNT}}"
+        private const val TASK_BLOCKS_PLACEHOLDER = "{{TASK_BLOCKS}}"
         private val HTML_TAG_REGEX = Regex("""</?[a-zA-Z][^>]*>""")
         private val BROKEN_OPEN_TAG_REGEX = Regex("""^\s*[a-zA-Z][a-zA-Z0-9]*>""")
         private val BRACED_SUBSCRIPT_REGEX =
