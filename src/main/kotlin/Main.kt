@@ -2,7 +2,9 @@ import data.DataService
 
 fun main() : Unit {
     ApiService().use { apiService ->
-        //TODO fetch new tasks in the start of programm
+        //TODO flexible variant constructor
+        //TODO fetch new tasks in the start of program
+        //TODO command to mark all tasks from variant(add variant table?) as solved
 //        apiService.get(1, 100).forEach{
 //                task ->
         //            println("taskId=${task.taskId}, number=${task.number}, key=${task.key}")
