@@ -1,23 +1,9 @@
-import java.io.Closeable
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
+package data
+
 import java.sql.Connection
-import java.sql.DriverManager
 
-class DataService(dbPath: String = "build/data/kompege.db") : Closeable {
-    private val connection: Connection
-
+class TaskData(private val connection: Connection) {
     init {
-        ensureParentDirectory(dbPath)
-        connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
-        connection.createStatement().use { stmt ->
-            stmt.execute("PRAGMA foreign_keys = ON")
-        }
-        initSchema()
-    }
-
-    private fun initSchema() {
         connection.createStatement().use { stmt ->
             stmt.execute(
                 """
@@ -32,7 +18,7 @@ class DataService(dbPath: String = "build/data/kompege.db") : Closeable {
         }
     }
 
-    fun saveTask(taskNumber: Int, taskIds: List<Int>) {
+    fun saveTaskIds(taskNumber: Int, taskIds: List<Int>) {
         if (taskIds.isEmpty()) return
 
         val sql = "INSERT OR IGNORE INTO tasks(task_number, task_id) VALUES(?, ?)"
@@ -55,7 +41,7 @@ class DataService(dbPath: String = "build/data/kompege.db") : Closeable {
         }
     }
 
-    fun getTask(taskNumber: Int, limit: Int? = null): List<Int> {
+    fun getTaskIds(taskNumber: Int, limit: Int? = null): List<Int> {
         val sql = buildString {
             append("SELECT task_id FROM tasks WHERE task_number = ?")
             if (limit != null) {
@@ -77,15 +63,5 @@ class DataService(dbPath: String = "build/data/kompege.db") : Closeable {
                 }
             }
         }
-    }
-
-    override fun close() {
-        connection.close()
-    }
-
-    private fun ensureParentDirectory(dbPath: String) {
-        val path: Path = Paths.get(dbPath).toAbsolutePath().normalize()
-        val parent = path.parent ?: return
-        Files.createDirectories(parent)
     }
 }
