@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.Closeable
+import java.util.concurrent.TimeUnit
 
 class ApiService : Closeable {
     companion object {
@@ -20,7 +21,11 @@ class ApiService : Closeable {
             ignoreUnknownKeys = true
         }
     }
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .callTimeout(90, TimeUnit.SECONDS)
+        .build()
 
     @OptIn(ExperimentalSerializationApi::class)
     fun get(number: Int, limit: Int? = null): List<TaskItem> {
@@ -74,7 +79,7 @@ class ApiService : Closeable {
     }
 
 
-    fun getDefinedTask(id: Int): TaskItem {
+    private fun getDefinedTask(id: Int): TaskItem {
         val req = Request.Builder()
             .url(DEFINED_TASK_URL + id.toString())
             .header("Accept", "application/json")
@@ -96,7 +101,7 @@ class ApiService : Closeable {
             ids.add(dataService.taskService.getTaskIds(task_n, 100).
                 filter { !dataService.studentService.hasSolvedTask(it, student) }[0])
         }
-        return ids.map{ id -> getDefinedTask(id) }
+        return ids.map { id -> getDefinedTask(id) }
     }
 
     override fun close() {

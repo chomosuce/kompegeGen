@@ -8,6 +8,12 @@ class ConsoleApp(
     private val registry: CommandRegistry,
     private val context: CommandContext
 ) {
+    init {
+        (1 .. 27).filter { it != 20 && it != 21 }.forEach { n ->
+            context.dataService.taskService.saveTaskIds(n, context.apiService.getTaskIds(n, 100))
+        }
+    }
+
     fun run() {
         var running = true
 

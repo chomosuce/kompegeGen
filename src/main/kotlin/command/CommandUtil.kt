@@ -1,6 +1,7 @@
 package command
 
 import ApiService
+import PDFgenerator
 import data.DataService
 
 enum class CommandResult {
@@ -10,7 +11,8 @@ enum class CommandResult {
 
 data class CommandContext(
     val dataService: DataService,
-    val apiService: ApiService
+    val apiService: ApiService,
+    val pdFgenerator: PDFgenerator
 )
 
 data class ParsedCommand(

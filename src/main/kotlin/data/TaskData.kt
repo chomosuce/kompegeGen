@@ -26,11 +26,12 @@ class TaskData(private val connection: Connection) {
                 )
                 """.trimIndent()
             )
+
         }
     }
 
-    fun saveVariant(tasks: List<TaskItem>) {
-        if (tasks.isEmpty()) return
+    fun saveVariant(tasks: List<TaskItem>): Int {
+        if (tasks.isEmpty()) return -1
 
         val nextVariantId = connection.createStatement().use { st ->
             st.executeQuery("SELECT COALESCE(MAX(variant_id), 0) + 1 AS next_id FROM variants")
@@ -46,6 +47,7 @@ class TaskData(private val connection: Connection) {
             }
             ps.executeBatch()
         }
+        return nextVariantId
     }
 
     fun getVariant(variant_id: Long): List<Int> {
