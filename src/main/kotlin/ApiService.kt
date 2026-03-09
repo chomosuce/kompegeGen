@@ -1,3 +1,4 @@
+import data.DataService
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.DecodeSequenceMode
 import kotlinx.serialization.json.Json
@@ -73,7 +74,7 @@ class ApiService : Closeable {
     }
 
 
-    fun getDefinedTask(id: Long): TaskItem {
+    fun getDefinedTask(id: Int): TaskItem {
         val req = Request.Builder()
             .url(DEFINED_TASK_URL + id.toString())
             .header("Accept", "application/json")
@@ -88,11 +89,14 @@ class ApiService : Closeable {
         }
     }
 
-    fun getVariant(): List<TaskItem> {
-        println(TASKS)
-        return TASKS.mapNotNull { number ->
-            get(number, 1).lastOrNull()
+    fun generateDefaultVariant(dataService: DataService, student :String = "default") : List<TaskItem> {
+        val ids = mutableListOf<Int>()
+        //TODO fix limit
+        TASKS.forEach { task_n ->
+            ids.add(dataService.taskService.getTaskIds(task_n, 100).
+                filter { !dataService.studentService.hasSolvedTask(it, student) }[0])
         }
+        return ids.map{ id -> getDefinedTask(id) }
     }
 
     override fun close() {

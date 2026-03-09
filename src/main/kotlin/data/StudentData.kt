@@ -26,7 +26,7 @@ class StudentData(private val connection: Connection) {
         }
     }
 
-    fun hasSolvedTask(studentId: String = "default", taskId: Int): Boolean {
+    fun hasSolvedTask(taskId: Int, studentId: String = "default"): Boolean {
         val sql = """
             SELECT 1
             FROM student_solved_tasks
